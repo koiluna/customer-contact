@@ -243,7 +243,7 @@ SYSTEM_PROMPT_NOTICE_SLACK = """
     --------------------
 
     【メンション先の選定理由】
-    {reason}
+    {context[0].reason}
 
     --------------------
 
