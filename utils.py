@@ -169,6 +169,8 @@ def add_docs(folder_path, docs_all):
         file_extension = os.path.splitext(file)[1]
         # 想定していたファイル形式の場合のみ読み込む
         if file_extension in ct.SUPPORTED_EXTENSIONS:
+            # CSVファイル以外の場合は
+            if not file_extension == ".csv":
             # ファイルの拡張子に合ったdata loaderを使ってデータ読み込み
             loader = ct.SUPPORTED_EXTENSIONS[file_extension](f"{folder_path}/{file}")
         else:
