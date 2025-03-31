@@ -346,9 +346,26 @@ def notice_slack(chat_message):
         weights=ct.RETRIEVER_WEIGHTS
     )
 
-    # 問い合わせ内容と関連性の高い従業員情報を取得（理由付き）
-    employees_with_reasons = retriever.invoke(chat_message, return_reasons=True)
+    # 問い合わせ内容と関連性の高い従業員情報を取得
+    employees = retriever.invoke(chat_message)
     
+    # 選定理由を生成
+    employees_with_reasons = []
+    for employee in employees:
+       # LLMに渡すプロンプトを作成
+       reason_prompt = f"""
+       以下の問い合わせ内容と従業員情報を基に、この従業員が選定された理由を簡潔に説明してください。
+       問い合わせ内容:
+       {chat_message}
+       従業員情報:
+       {employee.page_content}
+       理由:
+       """
+       # LLMで理由を生成
+       reason_response = st.session_state.llm(reason_prompt)
+       reason = reason_response.content.strip()  # LLMの応答を取得
+       employees_with_reasons.append((employee, reason))
+
     # プロンプトに埋め込むための従業員情報テキストを取得（理由付き）
     context = get_context_with_reasons(employees_with_reasons)
 
