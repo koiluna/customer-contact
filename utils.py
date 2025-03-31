@@ -527,7 +527,7 @@ def get_context_with_reasons(employees_with_reasons):
     for i, (employee, reason) in enumerate(employees_with_reasons, start=1):
         context += "===========================================================\n"
         context += f"{i}人目の従業員情報\n"
-        context += "===========================================================\n""
+        context += "===========================================================\n"
         context += employee.page_content + "\n"
         context += f"【メンション先選定の理由】 \n{reason}\n\n"
     return context
