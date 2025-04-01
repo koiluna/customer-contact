@@ -366,34 +366,6 @@ def notice_slack(chat_message):
 
     # 問い合わせ内容と関連性の高い従業員情報を取得
     employees = retriever.invoke(chat_message)
-    
-    """
-    # 選定理由を生成
-    employees_with_reasons = []
-    for employee in employees:
-        # 従業員名を取得
-        employee_name = extract_employee_name(employee.page_content)
-
-        # LLMに渡すプロンプトを作成
-        reason_prompt = f"""
-        以下の問い合わせ内容と従業員情報を基に、この従業員が選定された理由を簡潔に説明してください。
-
-        問い合わせ内容:
-        {chat_message}
-
-        従業員情報:
-        {employee.page_content}
-
-        理由:
-        """
-        # LLMで理由を生成
-        reason_response = st.session_state.llm(reason_prompt)
-        reason = reason_response.content.strip()  # LLMの応答を取得
-        employees_with_reasons.append((employee_name, reason))
-
-    # メンション先選定の理由を生成
-    mention_reasons = "\n".join([f"・{name}は、{reason}" for name, reason in employees_with_reasons])
-"""
 
     # プロンプトに埋め込むための従業員情報テキストを取得
     context = get_context(employees)
@@ -437,23 +409,6 @@ def notice_slack(chat_message):
 
     return ct.CONTACT_THANKS_MESSAGE
 
-"""
-def extract_employee_name(page_content):
-    """
-    従業員情報から従業員名を抽出
-
-    Args:
-        page_content: 従業員情報のテキスト
-
-    Returns:
-        従業員名
-    """
-    target_text = "従業員名"
-    num = page_content.find(target_text)
-    if num == -1:
-        return "不明"
-    return page_content[num + len(target_text) + 2:].split("\n")[0]
-"""
     
 def adjust_reference_data(docs, docs_history):
     """
