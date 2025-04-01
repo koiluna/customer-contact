@@ -231,6 +231,24 @@ def run_customer_doc_chain(param):
 
     return ai_msg["answer"]
 
+def run_economy_doc_chain(param):
+    """
+    金融経済に関するデータ参照に特化したTool設定用の関数
+
+    Args:
+        param: ユーザー入力値
+    
+    Returns:
+        LLMからの回答
+    """
+    # 顧客とのやり取りに関するデータ参照に特化したChainを実行してLLMからの回答取得
+    ai_msg = st.session_state.economy_doc_chain.invoke({"input": param, "chat_history": st.session_state.chat_history})
+
+    # 会話履歴への追加
+    st.session_state.chat_history.extend([HumanMessage(content=param), AIMessage(content=ai_msg["answer"])])
+
+    return ai_msg["answer"]
+
 
 def delete_old_conversation_log(result):
     """
@@ -398,7 +416,7 @@ def notice_slack(chat_message):
 
     # Slack通知用のプロンプト生成
     prompt = PromptTemplate(
-        input_variables=["slack_id_text", "query", "context", "now_datetime"],
+        input_variables=["slack_id_text", "query", "context", "now_datetime", "target_employee", "reason"],
         template=ct.SYSTEM_PROMPT_NOTICE_SLACK,
     )
     prompt_message = prompt.format(slack_id_text=slack_id_text, query=chat_message, context=context, now_datetime=now_datetime)
@@ -475,16 +493,21 @@ def get_target_employees(employees, employee_ids):
     target_employees = []
     duplicate_check = []
     target_text = "従業員ID"
+    target_text_name = "従業員名"
     for employee in employees:
         # 従業員IDの取得
         num = employee.page_content.find(target_text)
         employee_id = employee.page_content[num+len(target_text)+2:].split("\n")[0]
+        # 従業員名の取得
+        num_name = employee.page_content.find(target_text_name)
+        employee_name = employee.page_content[num_name+len(target_text_name)+2:].split("\n")[0]
+        
         # 問い合わせ内容と関連性が高い従業員情報を、IDで照合して取得（重複除去）
         if employee_id in employee_ids:
             if employee_id in duplicate_check:
                 continue
             duplicate_check.append(employee_id)
-            target_employees.append(employee)
+            target_employees.append(employee, employee_name)
     
     return target_employees
 
@@ -541,10 +564,11 @@ def get_context_with_reasons(employees_with_reasons):
     """
 
     context = ""
-    for i, (employee, reason) in enumerate(employees_with_reasons, start=1):
+    for i, ((employee, employee_name), reason) in enumerate(employees_with_reasons, start=1):
         context += "===========================================================\n"
         context += f"{i}人目の従業員情報\n"
         context += "===========================================================\n"
+        context += f"従業員名: {employee_name}\n"
         context += employee.page_content + "\n"
         context += f"【メンション先選定の理由】 \n{reason}\n\n"
     return context

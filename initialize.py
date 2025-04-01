@@ -120,6 +120,7 @@ def initialize_agent_executor():
     st.session_state.service_doc_chain = utils.create_rag_chain(ct.DB_SERVICE_PATH)
     st.session_state.company_doc_chain = utils.create_rag_chain(ct.DB_COMPANY_PATH)
     st.session_state.rag_chain = utils.create_rag_chain(ct.DB_ALL_PATH)
+    st.session_state.economy_doc_chain = utils.create_rag_chain(ct.DB_ECONOMY_PATH)
 
     # Web検索用のToolを設定するためのオブジェクトを用意
     search = SerpAPIWrapper()
@@ -148,7 +149,13 @@ def initialize_agent_executor():
             name = ct.SEARCH_WEB_INFO_TOOL_NAME,
             func=search.run,
             description=ct.SEARCH_WEB_INFO_TOOL_DESCRIPTION
-        )
+        ),
+        # 金融経済に関するデータ検索用のTool
+        Tool(
+            name=ct.SEARCH_ECONOMY_INFO_TOOL_NAME,
+            func=utils.run_economy_doc_chain,
+            description=ct.SEARCH_ECONOMY_INFO_TOOL_DESCRIPTION
+        ),
     ]
 
     # Agent Executorの作成
