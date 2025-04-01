@@ -507,7 +507,7 @@ def get_target_employees(employees, employee_ids):
             if employee_id in duplicate_check:
                 continue
             duplicate_check.append(employee_id)
-            target_employees.append(employee, employee_name)
+            target_employees.append((employee, employee_name))
     
     return target_employees
 
