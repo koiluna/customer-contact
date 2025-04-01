@@ -370,22 +370,31 @@ def notice_slack(chat_message):
     # 選定理由を生成
     employees_with_reasons = []
     for employee in employees:
-       # LLMに渡すプロンプトを作成
-       reason_prompt = f"""
-       以下の問い合わせ内容と従業員情報を基に、この従業員が選定された理由を簡潔に説明してください。
-       問い合わせ内容:
-       {chat_message}
-       従業員情報:
-       {employee.page_content}
-       理由:
-       """
-       # LLMで理由を生成
-       reason_response = st.session_state.llm(reason_prompt)
-       reason = reason_response.content.strip()  # LLMの応答を取得
-       employees_with_reasons.append((employee, reason))
+        # 従業員名を取得
+        employee_name = extract_employee_name(employee.page_content)
 
-    # プロンプトに埋め込むための従業員情報テキストを取得（理由付き）
-    context = get_context_with_reasons(employees_with_reasons)
+        # LLMに渡すプロンプトを作成
+        reason_prompt = f"""
+        以下の問い合わせ内容と従業員情報を基に、この従業員が選定された理由を簡潔に説明してください。
+
+        問い合わせ内容:
+        {chat_message}
+
+        従業員情報:
+        {employee.page_content}
+
+        理由:
+        """
+        # LLMで理由を生成
+        reason_response = st.session_state.llm(reason_prompt)
+        reason = reason_response.content.strip()  # LLMの応答を取得
+        employees_with_reasons.append((employee_name, reason))
+
+    # メンション先選定の理由を生成
+    mention_reasons = "\n".join([f"・{name}は、{reason}" for name, reason in employees_with_reasons])
+
+    # プロンプトに埋め込むための従業員情報テキストを取得
+    context = get_context(employees)
 
     prompt_template = ChatPromptTemplate.from_messages([
         ("system", ct.SYSTEM_PROMPT_EMPLOYEE_SELECTION)
@@ -400,20 +409,23 @@ def notice_slack(chat_message):
     employee_ids = output_parser.parse(employee_id_response.content)
 
     # 問い合わせ内容と関連性が高い従業員情報を、IDで照合して取得
-    target_employees = get_target_employees(employees_with_reasons, employee_ids)
+    target_employees = get_target_employees(employees, employee_ids)
     
     # 問い合わせ内容と関連性が高い従業員情報の中から、SlackIDのみを抽出
     slack_ids = get_slack_ids(target_employees)
     
     # 抽出したSlackIDの連結テキストを生成
     slack_id_text = create_slack_id_text(slack_ids)
+    
+    # プロンプトに埋め込むための（問い合わせ内容と関連性が高い）従業員情報テキストを取得
+    context = get_context(target_employees)
 
     # 現在日時を取得
     now_datetime = get_datetime()
 
     # Slack通知用のプロンプト生成
     prompt = PromptTemplate(
-        input_variables=["slack_id_text", "query", "context", "now_datetime"],
+        input_variables=["slack_id_text", "query", "context", "mention_reasons", "now_datetime"],
         template=ct.SYSTEM_PROMPT_NOTICE_SLACK,
     )
     prompt_message = prompt.format(slack_id_text=slack_id_text, query=chat_message, context=context, now_datetime=now_datetime)
@@ -422,6 +434,22 @@ def notice_slack(chat_message):
     agent_executor.invoke({"input": prompt_message})
 
     return ct.CONTACT_THANKS_MESSAGE
+
+def extract_employee_name(page_content):
+    """
+    従業員情報から従業員名を抽出
+
+    Args:
+        page_content: 従業員情報のテキスト
+
+    Returns:
+        従業員名
+    """
+    target_text = "従業員名"
+    num = page_content.find(target_text)
+    if num == -1:
+        return "不明"
+    return page_content[num + len(target_text) + 2:].split("\n")[0]
 
 def adjust_reference_data(docs, docs_history):
     """
@@ -490,21 +518,16 @@ def get_target_employees(employees, employee_ids):
     target_employees = []
     duplicate_check = []
     target_text = "従業員ID"
-    target_text_name = "従業員名"
     for employee in employees:
         # 従業員IDの取得
         num = employee.page_content.find(target_text)
         employee_id = employee.page_content[num+len(target_text)+2:].split("\n")[0]
-        # 従業員名の取得
-        num_name = employee.page_content.find(target_text_name)
-        employee_name = employee.page_content[num_name+len(target_text_name)+2:].split("\n")[0]
-        
         # 問い合わせ内容と関連性が高い従業員情報を、IDで照合して取得（重複除去）
         if employee_id in employee_ids:
             if employee_id in duplicate_check:
                 continue
             duplicate_check.append(employee_id)
-            target_employees.append((employee, employee_name))
+            target_employees.append(employee)
     
     return target_employees
 
@@ -550,24 +573,23 @@ def create_slack_id_text(slack_ids):
     return slack_id_text
 
 
-def get_context_with_reasons(employees_with_reasons):
+def get_context(docs):
     """
     プロンプトに埋め込むための従業員情報テキストの生成
     Args:
-        employees_with_reasons: 従業員情報、理由のリスト
+        docs: 従業員情報の一覧
 
     Returns:
         生成した従業員情報テキスト
     """
 
     context = ""
-    for i, ((employee, employee_name), reason) in enumerate(employees_with_reasons, start=1):
+    for i, doc in enumerate(docs, start=1):
         context += "===========================================================\n"
         context += f"{i}人目の従業員情報\n"
         context += "===========================================================\n"
-        context += f"従業員名: {employee_name}\n"
-        context += employee.page_content + "\n"
-        context += f"【メンション先選定の理由】 \n{reason}\n\n"
+        context += doc.page_content + "\n\n"
+
     return context
 
 
