@@ -367,6 +367,7 @@ def notice_slack(chat_message):
     # 問い合わせ内容と関連性の高い従業員情報を取得
     employees = retriever.invoke(chat_message)
     
+    """
     # 選定理由を生成
     employees_with_reasons = []
     for employee in employees:
@@ -392,6 +393,7 @@ def notice_slack(chat_message):
 
     # メンション先選定の理由を生成
     mention_reasons = "\n".join([f"・{name}は、{reason}" for name, reason in employees_with_reasons])
+"""
 
     # プロンプトに埋め込むための従業員情報テキストを取得
     context = get_context(employees)
@@ -425,7 +427,7 @@ def notice_slack(chat_message):
 
     # Slack通知用のプロンプト生成
     prompt = PromptTemplate(
-        input_variables=["slack_id_text", "query", "context", "mention_reasons", "now_datetime"],
+        input_variables=["slack_id_text", "query", "context", "now_datetime"],
         template=ct.SYSTEM_PROMPT_NOTICE_SLACK,
     )
     prompt_message = prompt.format(slack_id_text=slack_id_text, query=chat_message, context=context, now_datetime=now_datetime)
@@ -435,6 +437,7 @@ def notice_slack(chat_message):
 
     return ct.CONTACT_THANKS_MESSAGE
 
+"""
 def extract_employee_name(page_content):
     """
     従業員情報から従業員名を抽出
@@ -450,7 +453,8 @@ def extract_employee_name(page_content):
     if num == -1:
         return "不明"
     return page_content[num + len(target_text) + 2:].split("\n")[0]
-
+"""
+    
 def adjust_reference_data(docs, docs_history):
     """
     Slack通知用の参照先データの整形
