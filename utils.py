@@ -407,16 +407,13 @@ def notice_slack(chat_message):
     
     # 抽出したSlackIDの連結テキストを生成
     slack_id_text = create_slack_id_text(slack_ids)
-    
-    # プロンプトに埋め込むための（問い合わせ内容と関連性が高い）従業員情報テキストを取得
-    context = get_context_with_reasons(target_employees)
 
     # 現在日時を取得
     now_datetime = get_datetime()
 
     # Slack通知用のプロンプト生成
     prompt = PromptTemplate(
-        input_variables=["slack_id_text", "query", "context", "now_datetime", "target_employee", "reason"],
+        input_variables=["slack_id_text", "query", "context", "now_datetime"],
         template=ct.SYSTEM_PROMPT_NOTICE_SLACK,
     )
     prompt_message = prompt.format(slack_id_text=slack_id_text, query=chat_message, context=context, now_datetime=now_datetime)
